@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${AWS_RDS_SECRET_NAME:${DATABASE_USERNAME}}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: ${DATABASE_DRIVER:com.amazonaws.secretsmanager.sql.AWSSecretsManagerPostgreSQLDriver}
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+
+app:
+  application-name: ${PROJECT_NAME}-backend-${REPO_NAME}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
