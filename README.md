@@ -30,4 +30,5 @@ Handler: `com.fancia.backend.user.LambdaHandler::handleRequest`
 ./gradlew lambdaZip
 ```
 
-Infra: register repo `user-cron` with `is_cron: true` and the handler above (default cron handler is event-cron's).
+Infra: in `repositories` set `is_cron: true` and
+`handler: "com.fancia.backend.user.LambdaHandler::handleRequest"`.

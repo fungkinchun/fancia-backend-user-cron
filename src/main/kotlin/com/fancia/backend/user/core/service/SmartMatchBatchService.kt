@@ -4,6 +4,7 @@ import com.fancia.backend.shared.user.core.entity.SmartMatch
 import com.fancia.backend.shared.user.core.entity.User
 import com.fancia.backend.shared.user.core.enums.AccountStatus
 import com.fancia.backend.shared.user.core.enums.ProfileVisibility
+import com.fancia.backend.shared.user.core.support.smartMatchEligible
 import com.fancia.backend.user.core.repository.SmartMatchRepository
 import com.fancia.backend.user.core.repository.UserRepository
 import com.fancia.backend.user.core.support.RankedUser
@@ -24,7 +25,8 @@ class SmartMatchBatchService(
 
     fun generateAll(): Int {
         val users = userRepository.findByStatus(AccountStatus.ACTIVE)
-        log.info("Starting Smart Match batch generation for {} active users", users.size)
+            .filter { it.smartMatchEligible() }
+        log.info("Starting Smart Match batch generation for {} smart-match-enabled users", users.size)
         var touched = 0
         for (user in users) {
             val userId = user.id ?: continue
@@ -37,6 +39,7 @@ class SmartMatchBatchService(
     @Transactional
     fun generateForUser(userId: UUID): Int {
         val user = userRepository.findById(userId).orElse(null) ?: return 0
+        if (!user.smartMatchEligible()) return 0
         val ranked = rankCandidatesForUser(user)
         val flaggedTargets = smartMatchRepository.findFlaggedTargetIdsForUser(userId).toSet()
         val flaggedAsTarget = smartMatchRepository.findFlaggedOwnerIdsWhereUserIsTarget(userId).toSet()
@@ -113,18 +116,25 @@ class SmartMatchBatchService(
     ): List<User> {
         val visibility = ProfileVisibility.PUBLIC
         val status = AccountStatus.ACTIVE
-        if (preferences.tagIds.isEmpty()) {
-            return userRepository.findPublicActiveUsersExcluding(currentUserId, visibility, status)
-                .take(fetchSize)
+        val candidates = if (preferences.tagIds.isEmpty()) {
+            userRepository.findPublicActiveUsersExcluding(
+                currentUserId,
+                visibility,
+                status,
+            )
+        } else {
+            val expandedTagIds = smartMatchUserRanker.expandTagWeights(preferences).keys
+            val tagFilter = expandedTagIds.ifEmpty { preferences.tagIds }
+            userRepository.findPublicActiveUsersWithSharedTags(
+                tagFilter,
+                currentUserId,
+                visibility,
+                status,
+            )
         }
-        val expandedTagIds = smartMatchUserRanker.expandTagWeights(preferences).keys
-        val tagFilter = expandedTagIds.ifEmpty { preferences.tagIds }
-        return userRepository.findPublicActiveUsersWithSharedTags(
-            tagFilter,
-            currentUserId,
-            visibility,
-            status,
-        ).take(fetchSize)
+        return candidates
+            .filter { it.smartMatchEligible() }
+            .take(fetchSize)
     }
 
     companion object {

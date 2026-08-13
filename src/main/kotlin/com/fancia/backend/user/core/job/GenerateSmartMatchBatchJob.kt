@@ -7,6 +7,7 @@ import com.fancia.backend.user.core.repository.UserRepository
 import com.fancia.backend.user.core.service.SmartMatchBatchService
 import com.fancia.backend.shared.common.core.exception.DomainException
 import com.fancia.backend.shared.user.core.enums.AccountStatus
+import com.fancia.backend.shared.user.core.support.smartMatchEligible
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
@@ -22,8 +23,9 @@ class GenerateSmartMatchBatchJob(
 
     override fun run(args: ApplicationArguments) {
         val users = userRepository.findByStatus(AccountStatus.ACTIVE)
+            .filter { it.smartMatchEligible() }
         log.info(
-            "Starting Smart Match batch generation for {} active users (batchSize={})",
+            "Starting Smart Match batch generation for {} smart-match-enabled users (batchSize={})",
             users.size,
             SmartMatchBatchService.BATCH_SIZE,
         )
@@ -35,7 +37,7 @@ class GenerateSmartMatchBatchJob(
         for (user in users) {
             val userId = user.id
             if (userId == null) {
-                log.warn("Skipping active user with null id")
+                log.warn("Skipping smart-match-enabled user with null id")
                 continue
             }
             try {
