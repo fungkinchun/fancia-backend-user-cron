@@ -40,8 +40,16 @@ class GenerateSmartMatchBatchJob(
                 log.warn("Skipping smart-match-enabled user with null id")
                 continue
             }
+            log.debug(
+                "Generating Smart Match batch for userId={} email={} visibility={} smartMatchEnabled={}",
+                userId,
+                user.email,
+                user.visibility,
+                user.settings?.privacy?.smartMatchEnabled,
+            )
             try {
                 val written = smartMatchBatchService.generateForUser(userId)
+                log.debug("Finished Smart Match batch for userId={} upserted={}", userId, written)
                 if (written > 0) {
                     usersTouched++
                     rowsUpserted += written

@@ -27,4 +27,4 @@ app:
 
 logging:
   level:
-    com.fancia.backend.user: INFO
+    com.fancia.backend.user: DEBUG

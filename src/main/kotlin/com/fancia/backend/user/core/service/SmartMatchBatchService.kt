@@ -38,22 +38,51 @@ class SmartMatchBatchService(
 
     @Transactional
     fun generateForUser(userId: UUID): Int {
-        val user = userRepository.findById(userId).orElse(null) ?: return 0
-        if (!user.smartMatchEligible()) return 0
+        val user = userRepository.findById(userId).orElse(null)
+        if (user == null) {
+            log.debug("Skipping Smart Match batch for userId={}: user not found", userId)
+            return 0
+        }
+        if (!user.smartMatchEligible()) {
+            log.debug(
+                "Skipping Smart Match batch for userId={}: not eligible status={} visibility={} smartMatchEnabled={}",
+                userId,
+                user.status,
+                user.visibility,
+                user.settings?.privacy?.smartMatchEnabled,
+            )
+            return 0
+        }
         val ranked = rankCandidatesForUser(user)
         val flaggedTargets = smartMatchRepository.findFlaggedTargetIdsForUser(userId).toSet()
         val flaggedAsTarget = smartMatchRepository.findFlaggedOwnerIdsWhereUserIsTarget(userId).toSet()
         val excluded = flaggedTargets + flaggedAsTarget
+        log.debug(
+            "Smart Match ranking for userId={}: ranked={} flaggedTargets={} flaggedAsTarget={}",
+            userId,
+            ranked.size,
+            flaggedTargets.size,
+            flaggedAsTarget.size,
+        )
 
         val selected = ranked
             .asSequence()
             .mapNotNull { rankedUser ->
                 val targetId = rankedUser.user.id ?: return@mapNotNull null
-                if (targetId in excluded) return@mapNotNull null
+                if (targetId in excluded) {
+                    log.debug(
+                        "Excluding already-flagged match userId={} targetId={} score={}",
+                        userId,
+                        targetId,
+                        rankedUser.score,
+                    )
+                    return@mapNotNull null
+                }
                 rankedUser
             }
             .take(BATCH_SIZE)
             .toList()
+        log.debug("Selected Smart Match batch for userId={}: size={}", userId, selected.size)
 
         val existingByTarget = smartMatchRepository.findByUserId(userId)
             .filter { it.targetId != null }
@@ -68,12 +97,27 @@ class SmartMatchBatchService(
             val existing = existingByTarget[targetId]
             if (existing != null) {
                 if (existing.userIdFlag != null) {
+                    log.debug(
+                        "Keeping flagged Smart Match userId={} targetId={} rank={} score={} userIdFlag={}",
+                        userId,
+                        targetId,
+                        existing.rank,
+                        existing.score,
+                        existing.userIdFlag,
+                    )
                     return@forEachIndexed
                 }
                 existing.rank = rank
                 existing.score = rankedUser.score
                 smartMatchRepository.save(existing)
                 upserted++
+                log.debug(
+                    "Updated Smart Match userId={} targetId={} rank={} score={}",
+                    userId,
+                    targetId,
+                    rank,
+                    rankedUser.score,
+                )
             } else {
                 val row = SmartMatch().apply {
                     createdBy = userId
@@ -86,6 +130,13 @@ class SmartMatchBatchService(
                 }
                 smartMatchRepository.save(row)
                 upserted++
+                log.debug(
+                    "Created Smart Match userId={} targetId={} rank={} score={}",
+                    userId,
+                    targetId,
+                    rank,
+                    rankedUser.score,
+                )
             }
         }
 
@@ -93,6 +144,12 @@ class SmartMatchBatchService(
             row.userIdFlag == null && row.targetId !in keepTargetIds
         }
         if (staleUnseen.isNotEmpty()) {
+            log.debug(
+                "Deleting stale unseen Smart Match rows for userId={}: count={} targetIds={}",
+                userId,
+                staleUnseen.size,
+                staleUnseen.map { it.targetId },
+            )
             smartMatchRepository.deleteAll(staleUnseen)
         }
         return upserted
