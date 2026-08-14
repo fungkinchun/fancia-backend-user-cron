@@ -54,8 +54,8 @@ class SmartMatchBatchService(
             return 0
         }
         val ranked = rankCandidatesForUser(user)
-        val flaggedTargets = smartMatchRepository.findFlaggedTargetIdsForUser(userId).toSet()
-        val flaggedAsTarget = smartMatchRepository.findFlaggedOwnerIdsWhereUserIsTarget(userId).toSet()
+        val flaggedTargets = smartMatchRepository.findFlaggedSecondUserIdsForFirstUser(userId).toSet()
+        val flaggedAsTarget = smartMatchRepository.findFlaggedFirstUserIdsForSecondUser(userId).toSet()
         val excluded = flaggedTargets + flaggedAsTarget
         log.debug(
             "Smart Match ranking for userId={}: ranked={} flaggedTargets={} flaggedAsTarget={}",
@@ -84,9 +84,9 @@ class SmartMatchBatchService(
             .toList()
         log.debug("Selected Smart Match batch for userId={}: size={}", userId, selected.size)
 
-        val existingByTarget = smartMatchRepository.findByUserId(userId)
-            .filter { it.targetId != null }
-            .associateBy { it.targetId!! }
+        val existingByTarget = smartMatchRepository.findByFirstUserId(userId)
+            .filter { it.secondUserId != null }
+            .associateBy { it.secondUserId!! }
 
         val keepTargetIds = mutableSetOf<UUID>()
         var upserted = 0
@@ -96,14 +96,14 @@ class SmartMatchBatchService(
             val rank = index + 1
             val existing = existingByTarget[targetId]
             if (existing != null) {
-                if (existing.userIdFlag != null) {
+                if (existing.firstUserLiked != null) {
                     log.debug(
-                        "Keeping flagged Smart Match userId={} targetId={} rank={} score={} userIdFlag={}",
+                        "Keeping flagged Smart Match userId={} targetId={} rank={} score={} firstUserLiked={}",
                         userId,
                         targetId,
                         existing.rank,
                         existing.score,
-                        existing.userIdFlag,
+                        existing.firstUserLiked,
                     )
                     return@forEachIndexed
                 }
@@ -121,10 +121,10 @@ class SmartMatchBatchService(
             } else {
                 val row = SmartMatch().apply {
                     createdBy = userId
-                    this.userId = userId
-                    this.targetId = targetId
-                    userIdFlag = null
-                    targetIdFlag = null
+                    firstUserId = userId
+                    secondUserId = targetId
+                    firstUserLiked = null
+                    secondUserLiked = null
                     this.rank = rank
                     score = rankedUser.score
                 }
@@ -141,14 +141,14 @@ class SmartMatchBatchService(
         }
 
         val staleUnseen = existingByTarget.values.filter { row ->
-            row.userIdFlag == null && row.targetId !in keepTargetIds
+            row.firstUserLiked == null && row.secondUserId !in keepTargetIds
         }
         if (staleUnseen.isNotEmpty()) {
             log.debug(
                 "Deleting stale unseen Smart Match rows for userId={}: count={} targetIds={}",
                 userId,
                 staleUnseen.size,
-                staleUnseen.map { it.targetId },
+                staleUnseen.map { it.secondUserId },
             )
             smartMatchRepository.deleteAll(staleUnseen)
         }

@@ -9,25 +9,25 @@ import java.util.UUID
 
 @Repository
 interface SmartMatchRepository : JpaRepository<SmartMatch, UUID> {
-    fun findByUserId(userId: UUID): List<SmartMatch>
+    fun findByFirstUserId(firstUserId: UUID): List<SmartMatch>
 
     @Query(
         """
-        SELECT s.targetId
+        SELECT s.secondUserId
         FROM SmartMatch s
-        WHERE s.userId = :userId
-          AND s.userIdFlag IS NOT NULL
+        WHERE s.firstUserId = :userId
+          AND s.firstUserLiked IS NOT NULL
         """,
     )
-    fun findFlaggedTargetIdsForUser(@Param("userId") userId: UUID): List<UUID>
+    fun findFlaggedSecondUserIdsForFirstUser(@Param("userId") userId: UUID): List<UUID>
 
     @Query(
         """
-        SELECT s.userId
+        SELECT s.firstUserId
         FROM SmartMatch s
-        WHERE s.targetId = :userId
-          AND s.targetIdFlag IS NOT NULL
+        WHERE s.secondUserId = :userId
+          AND s.secondUserLiked IS NOT NULL
         """,
     )
-    fun findFlaggedOwnerIdsWhereUserIsTarget(@Param("userId") userId: UUID): List<UUID>
+    fun findFlaggedFirstUserIdsForSecondUser(@Param("userId") userId: UUID): List<UUID>
 }
