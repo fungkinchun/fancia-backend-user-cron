@@ -64,7 +64,6 @@ dependencies {
     implementation("com.amazonaws.secretsmanager:aws-secretsmanager-jdbc:2.0.4")
     implementation("com.fancia.backend.shared:common:0.0.1-SNAPSHOT")
     implementation("com.fancia.backend.shared:user:0.0.1-SNAPSHOT")
-    implementation("org.crac:crac:1.5.0")
     implementation("com.amazonaws:aws-lambda-java-core:1.2.3")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
