@@ -3,6 +3,7 @@ package com.fancia.backend.user.core.support
 import com.fancia.backend.shared.common.tag.core.dto.TagResponse
 import com.fancia.backend.shared.common.tag.core.enums.TagType
 import com.fancia.backend.shared.user.core.entity.User
+import com.fancia.backend.shared.user.core.support.PremiumLimits
 import java.util.UUID
 
 class SmartMatchUserRanker(
@@ -44,6 +45,9 @@ class SmartMatchUserRanker(
             if (candidateLocation.contains(userLocation) || userLocation.contains(candidateLocation)) {
                 score += LOCATION_BONUS
             }
+        }
+        if (candidate.premiumActive) {
+            score += PremiumLimits.EXPOSURE_SCORE_BONUS
         }
         return score
     }

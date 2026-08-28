@@ -114,4 +114,15 @@ class SmartMatchUserRankerTest : FunSpec({
         ranked[0].user shouldBe nearby
         ranked[0].score shouldBeGreaterThan ranked[1].score
     }
+
+    test("premium candidates rank above otherwise equal free candidates") {
+        val free = user(UUID.randomUUID(), setOf(hikingTagId), "Berlin")
+        val premium = user(UUID.randomUUID(), setOf(hikingTagId), "Berlin").also { it.premiumActive = true }
+        val preferences = SmartMatchUserPreferences(tagIds = setOf(hikingTagId), locationLabel = "Berlin")
+
+        val ranked = ranker.rank(listOf(free, premium), preferences, currentUserId)
+
+        ranked[0].user shouldBe premium
+        ranked[0].score shouldBeGreaterThan ranked[1].score
+    }
 })
