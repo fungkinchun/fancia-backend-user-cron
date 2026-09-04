@@ -1,10 +1,12 @@
 package com.fancia.backend.user.core.service
 
+import com.fancia.backend.shared.common.moderation.core.enums.BlockedResourceType
 import com.fancia.backend.shared.user.core.entity.SmartMatch
 import com.fancia.backend.shared.user.core.entity.User
 import com.fancia.backend.shared.user.core.enums.AccountStatus
 import com.fancia.backend.shared.user.core.enums.ProfileVisibility
 import com.fancia.backend.shared.user.core.support.smartMatchEligible
+import com.fancia.backend.user.core.repository.BlockedResourceRepository
 import com.fancia.backend.user.core.repository.SmartMatchRepository
 import com.fancia.backend.user.core.repository.UserRepository
 import com.fancia.backend.user.core.support.RankedUser
@@ -19,6 +21,7 @@ import java.util.UUID
 class SmartMatchBatchService(
     private val userRepository: UserRepository,
     private val smartMatchRepository: SmartMatchRepository,
+    private val blockedResourceRepository: BlockedResourceRepository,
     private val smartMatchUserRanker: SmartMatchUserRanker,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -157,9 +160,15 @@ class SmartMatchBatchService(
 
     fun rankCandidatesForUser(user: User): List<RankedUser> {
         val userId = user.id ?: return emptyList()
+        val blocked = blockedResourceRepository.findAllByIdUserIdAndIdResourceTypeIn(
+            userId,
+            listOf(BlockedResourceType.USER, BlockedResourceType.TAG),
+        )
+        val blockedByType = blocked.groupBy { it.id.resourceType }
         val preferences = SmartMatchUserPreferences(
             tagIds = user.tags,
-            blacklistedIds = user.blacklistedIds,
+            blockedUserIds = blockedByType[BlockedResourceType.USER].orEmpty().map { it.id.resourceId }.toSet(),
+            blockedTagIds = blockedByType[BlockedResourceType.TAG].orEmpty().map { it.id.resourceId }.toSet(),
             locationLabel = user.locationLabel,
         )
         val candidates = findSmartMatchUserCandidates(userId, preferences, CANDIDATE_FETCH_SIZE)

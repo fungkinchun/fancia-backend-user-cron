@@ -12,6 +12,7 @@ import kotlin.system.exitProcess
         "com.fancia.backend.shared.user.core.entity",
         "com.fancia.backend.shared.common.core.entity",
         "com.fancia.backend.shared.common.tag.core.entity",
+        "com.fancia.backend.shared.common.moderation.core.entity",
     ],
 )
 @EnableJpaRepositories(

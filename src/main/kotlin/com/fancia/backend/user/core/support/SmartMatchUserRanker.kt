@@ -23,10 +23,11 @@ class SmartMatchUserRanker(
         return weights
     }
 
-    fun isBlacklisted(candidate: User, blacklistedIds: Set<UUID>): Boolean {
-        if (blacklistedIds.isEmpty()) return false
-        if (candidate.id != null && candidate.id in blacklistedIds) return true
-        if (candidate.tags.any { it in blacklistedIds }) return true
+    fun isBlocked(candidate: User, preferences: SmartMatchUserPreferences): Boolean {
+        if (candidate.id != null && candidate.id in preferences.blockedUserIds) return true
+        if (preferences.blockedTagIds.isNotEmpty() && candidate.tags.any { it in preferences.blockedTagIds }) {
+            return true
+        }
         return false
     }
 
@@ -61,7 +62,7 @@ class SmartMatchUserRanker(
         return candidates
             .asSequence()
             .filter { user -> user.id != null && user.id != currentUserId }
-            .filter { user -> !isBlacklisted(user, preferences.blacklistedIds) }
+            .filter { user -> !isBlocked(user, preferences) }
             .map { user -> RankedUser(user, score(user, tagWeights, preferences)) }
             .sortedWith(compareByDescending<RankedUser> { it.score }.thenBy { it.user.id })
             .toList()

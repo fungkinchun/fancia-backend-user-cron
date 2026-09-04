@@ -73,12 +73,12 @@ class SmartMatchUserRankerTest : FunSpec({
         ranked[0].score shouldBeGreaterThan ranked[1].score
     }
 
-    test("blacklisted tag excludes candidate") {
+    test("blocked tag excludes candidate") {
         val blocked = user(UUID.randomUUID(), setOf(blacklistTagId, hikingTagId))
         val allowed = user(UUID.randomUUID(), setOf(hikingTagId))
         val preferences = SmartMatchUserPreferences(
             tagIds = setOf(hikingTagId),
-            blacklistedIds = setOf(blacklistTagId),
+            blockedTagIds = setOf(blacklistTagId),
         )
 
         val ranked = ranker.rank(listOf(blocked, allowed), preferences, currentUserId)
@@ -87,12 +87,12 @@ class SmartMatchUserRankerTest : FunSpec({
         ranked[0].user shouldBe allowed
     }
 
-    test("blacklisted user id excludes candidate") {
+    test("blocked user id excludes candidate") {
         val blocked = user(blacklistedUserId, setOf(hikingTagId))
         val allowed = user(UUID.randomUUID(), setOf(hikingTagId))
         val preferences = SmartMatchUserPreferences(
             tagIds = setOf(hikingTagId),
-            blacklistedIds = setOf(blacklistedUserId),
+            blockedUserIds = setOf(blacklistedUserId),
         )
 
         val ranked = ranker.rank(listOf(blocked, allowed), preferences, currentUserId)

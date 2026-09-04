@@ -5,7 +5,8 @@ import java.util.UUID
 
 data class SmartMatchUserPreferences(
     val tagIds: Set<UUID> = emptySet(),
-    val blacklistedIds: Set<UUID> = emptySet(),
+    val blockedUserIds: Set<UUID> = emptySet(),
+    val blockedTagIds: Set<UUID> = emptySet(),
     val locationLabel: String? = null,
 )
 
